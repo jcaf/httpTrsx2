@@ -76,6 +76,10 @@ EthernetClient client;
 
 #define JSON_SIZEMAX 1//4
 JSON json[JSON_SIZEMAX];
+
+#define TRSX_NUMMAX 2
+TRSX trsx[TRSX_NUMMAX];
+
 void setup(void)
 {
   char buff[30];
@@ -91,19 +95,20 @@ void setup(void)
     
     //2) Client config connection to server
     
-    httpTrsxWrite_setClient((Client*)&client);//Only for Arduino
+    httpTrsx_setClient(&trsx[0], (Client*)&client);//Only for Arduino
+    //client.setTimeout(1000);
     #ifdef HTTPTRSX_DEBUG
         httpTrsx_UARTdebug_setPrintFx(UART_print);//library point to this funcion()
-        httpTrsxWrite_UARTdebug_enabled(TRUE);
+        httpTrsx_UARTdebug_enabled(&trsx[0], TRUE);
     #endif
     
-    httpTrsxWrite_setupServerByIP(IPaddr_server, 80);
-    //client.setTimeout(1000);
+    httpTrsx_setupServerByIP(&trsx[0], IPaddr_server, 80);
+    
     
     //3) Set HTTP transaction
-    httpTrsxWrite_setURI("/jsondecode.php");
-    httpTrsxWrite_setHost("192.168.1.54");
-    httpTrsxWrite_setApiKey("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE1MzU0MjczNTVfcGFibG8iLCJkZXZpY2VfaWQiOiI1YjdmMjc3ZmVmNGFkNjgxYjIwM2I0NDQiLCJlbWFpbCI6InBhYmxvZG9uYXlyZUBnbWFpbC5jb20iLCJpYXQiOjE1NjQwODgwMjR9.G8BWFQ1O_KH4hVfibYSlGd-UqQLdWZ1d_sxonbhqANc");
+    httpTrsx_setURI(&trsx[0], "/jsondecode.php");
+    httpTrsx_setHost(&trsx[0], "192.168.1.54");
+    httpTrsx_setApiKey(&trsx[0], "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE1MzU0MjczNTVfcGFibG8iLCJkZXZpY2VfaWQiOiI1YjdmMjc3ZmVmNGFkNjgxYjIwM2I0NDQiLCJlbWFpbCI6InBhYmxvZG9uYXlyZUBnbWFpbC5jb20iLCJpYXQiOjE1NjQwODgwMjR9.G8BWFQ1O_KH4hVfibYSlGd-UqQLdWZ1d_sxonbhqANc");
 
     
     //
@@ -113,25 +118,25 @@ void setup(void)
     // char strval[30];
     // json_cFloatArr(value, sizeof(strval)/sizeof(strval[0]), strval);
     //json[0].strval = strval;
-    json[0].strval = "[756,9.3,4.8,4.69]";
+    json[0].strval = "[756,88.6,4.8,4.69]";
 
     //4) Http transaction setting
-    httpTrsx_setExecInterval_ms(1000);//ms
-    httpTrsx_setExecMode(EM_RUN_INTERVAL);//RUN_ONCE
+    httpTrsx_setExecInterval_ms(&trsx[0], 1000);//ms
+    httpTrsx_setExecMode(&trsx[0], EM_RUN_INTERVAL);//RUN_ONCE
 }
 
 char outmsg[HTTP_TRSX_RX_BUFFER_MAX_SIZE];
 
-//int8_t httpTrsx_do1trsx(TRSXWR *trsxwr, JSON *json, uint8_t npairs, char *outmsg);
+
 int c;
 void loop(void)
 {
     
-    if (httpTrsx_job(&httpTrsx.trsxw, json, 1, outmsg))
+    if (httpTrsx_job(&trsx[0], json, 1, outmsg))
     {
         if (++c == 3)
         {
-            httpTrsx_setExecMode(EM_STOP);
+            httpTrsx_setExecMode(&trsx[0], EM_STOP);
         }
     }
     

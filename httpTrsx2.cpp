@@ -12,38 +12,38 @@
 #include <stdint.h>
 extern EthernetClient client;
 /******************************************************************************************/
-static HTTPTRSX httpTrsx;    
+#ifdef HTTPTRSX_DEBUG
+static HTTPTRSXDEBUG httpTrsxDebug;    
+#endif
 /******************************************************************************************/
 #if defined(__AVR__) && defined(__GNUC__)
-    void httpTrsx_setClient(TRSXWR *trsxw, Client* client)
+    void httpTrsx_setClient(TRSX *trsx, Client* client)
     {
-        trsxw->client = client;
+        trsx->client = client;
     }
-    #define httpTrsxWrite_setClient(client) do{httpTrsx_setClient(&httpTrsx.trsxw, client);}while(0)
-    #define httpTrsxRead_setClient(client) do{httpTrsx_setClient(&httpTrsx.trxr, client);}while(0)
 #elif
 #endif
 
 #ifdef HTTPTRSX_DEBUG
-void httpTrsx_UARTdebug_enabled(TRSXWR *trsxw, BOOLEAN_T _bool)
+void httpTrsx_UARTdebug_enabled(TRSX *trsx, BOOLEAN_T _bool)
 {
-    trsxw->dbg.bf.enabled = _bool.k;
-    //httpTrsx.dbg.UART_print = UART_print;
+    trsx->dbg.bf.enabled = _bool.k;
+    //httpTrsxDebug.dbg.UART_print = UART_print;
 }
-void httpTrsx_UARTdebug_print(TRSXWR *trsxw, char *str, int8_t mode)
+void httpTrsx_UARTdebug_print(TRSX *trsx, char *str, int8_t mode)
 {
-    if (trsxw->dbg.bf.enabled)
-        {httpTrsx.UART_print(str, mode);}
+    if (trsx->dbg.bf.enabled)
+        {httpTrsxDebug.UART_print(str, mode);}
 }
 #if defined(__AVR__) && defined(__GNUC__)
 void httpTrsx_UARTdebug_setPrintFx(PTRFX_retVOID_arg1_PCHAR_arg2_INT8_T UART_print)
 {
-    httpTrsx.UART_print = UART_print;
+    httpTrsxDebug.UART_print = UART_print;
 }
 #elif
 void httpTrsx_UARTdebug_setPrintFx(PTRFX_retVOID_arg1_PCHAR UART_print)
 {
-    httpTrsx.UART_print = UART_print;
+    httpTrsxDebug.UART_print = UART_print;
 }
 #endif
 #endif
@@ -102,57 +102,57 @@ void NIC_getMyIP(char *str, uint16_t sizebuff)
   //#define Serial.print(s) do{printf("%s", s);}while(0)
 #endif
 /******************************************************************************************/
-int16_t tcpClient_getBytesAvailable(TRSXWR *trsxw)
+int16_t tcpClient_getBytesAvailable(TRSX *trsx)
 {
     #if defined(__AVR__) && defined(__GNUC__)
     
-    return trsxw->client->available();
+    return trsx->client->available();
     #elif
     #endif
 }
-int8_t tcpClient_connected(TRSXWR *trsxw)
+int8_t tcpClient_connected(TRSX *trsx)
 {
     #if defined(__AVR__) && defined(__GNUC__)
-    return trsxw->client->connected();
+    return trsx->client->connected();
     #elif
     #endif
 }
-void tcpClient_stop(TRSXWR *trsxw)
+void tcpClient_stop(TRSX *trsx)
 {
     #if defined(__AVR__) && defined(__GNUC__)
-    trsxw->client->stop();
+    trsx->client->stop();
     #elif
     #endif
 }
-char httpClient_readChar(TRSXWR *trsxw) 
+char httpClient_readChar(TRSX *trsx) 
 {
     #if defined(__AVR__) && defined(__GNUC__)
-    return trsxw->client->read();
+    return trsx->client->read();
     #elif
     #endif
 }
 /******************************************************************************************/
 /*Print standard (RAM)*/
-void http_print(TRSXWR *trsxw, const char *s)
+void http_print(TRSX *trsx, const char *s)
 {
     #if defined(__AVR__) && defined(__GNUC__)
-        trsxw->client->print(s);
+        trsx->client->print(s);
         #ifdef HTTPTRSX_DEBUG
-            httpTrsx_UARTdebug_print(trsxw, s, 0);
+            httpTrsx_UARTdebug_print(trsx, s, 0);
         #endif  
     #elif
     #endif
 }
 /******************************************************************************************/
-void http_printk(TRSXWR *trsxw, char *s)
+void http_printk(TRSX *trsx, char *s)
 {
     #ifdef FS_STRING
-        trsxw->client->print(reinterpret_cast <const __FlashStringHelper *> (s) );
+        trsx->client->print(reinterpret_cast <const __FlashStringHelper *> (s) );
         #ifdef HTTPTRSX_DEBUG
-            httpTrsx_UARTdebug_print(trsxw, s, 1);
+            httpTrsx_UARTdebug_print(trsx, s, 1);
         #endif
     #else
-      http_print(trsxw, s);
+      http_print(trsx, s);
     #endif
 }
 /******************************************************************************************/
@@ -174,64 +174,64 @@ void uint32toa(uint32_t ui32, char *buff, uint32_t sizebuff)
     snprintf(buff, sizebuff, "%lu", ui32);
 }
 /******************************************************************************************/
-void http_send_msgbody(TRSXWR *trsxw, JSON *json, uint8_t npairs)
+void http_send_msgbody(TRSX *trsx, JSON *json, uint8_t npairs)
 {
     int i;
-    http_printk(trsxw, FS("{"));
+    http_printk(trsx, FS("{"));
     for (i=0; i<npairs; i++)
     {
-        http_printk(trsxw, FS("\""));
-        http_print(trsxw, json[i].name);
-        http_printk(trsxw, FS("\":"));
-        http_print(trsxw, json[i].strval);
+        http_printk(trsx, FS("\""));
+        http_print(trsx, json[i].name);
+        http_printk(trsx, FS("\":"));
+        http_print(trsx, json[i].strval);
         
         if (i< (npairs-1))
-            {http_printk(trsxw, FS(","));}
+            {http_printk(trsx, FS(","));}
     }
-    http_printk(trsxw, FS("}"));
+    http_printk(trsx, FS("}"));
 }
 /******************************************************************************************/
-void httpTrsx_setHost(TRSXWR *trsxw, char *host)
+void httpTrsx_setHost(TRSX *trsx, char *host)
 {
-    trsxw->Host = host;
+    trsx->Host = host;
 }
-void httpTrsx_setURI(TRSXWR *trsxw, char *URI)
+void httpTrsx_setURI(TRSX *trsx, char *URI)
 {
-    trsxw->URI = URI;
+    trsx->URI = URI;
 }
-void httpTrsx_setApiKey(TRSXWR *trsxw, char *ApiKey)    
+void httpTrsx_setApiKey(TRSX *trsx, char *ApiKey)    
 {
-    trsxw->ApiKey = ApiKey;
+    trsx->ApiKey = ApiKey;
 }
-void httpTrsx_setHdrLine(TRSXWR *trsxw, char *HdrLine)
+void httpTrsx_setHdrLine(TRSX *trsx, char *HdrLine)
 {
-    trsxw->HdrLine = HdrLine;
+    trsx->HdrLine = HdrLine;
 }
 /******************************************************************************************/
-int8_t httpTrsx_requestMsg(TRSXWR *trsxw, JSON *json, uint8_t npairs)//send the request message to HTTP server
+int8_t httpTrsx_requestMsg(TRSX *trsx, JSON *json, uint8_t npairs)//send the request message to HTTP server
 {
     int8_t cod_ret = 0;
     char buff[20];
     /*1) Request Line*/
-    http_printk(trsxw, FS("POST "));http_print(trsxw, trsxw->URI);http_printk(trsxw, FS(" HTTP/1.1\r\n"));
+    http_printk(trsx, FS("POST "));http_print(trsx, trsx->URI);http_printk(trsx, FS(" HTTP/1.1\r\n"));
     
     /*2) Header lines*/
-    http_printk(trsxw, FS("Host: "));http_print(trsxw, trsxw->Host);http_printk(trsxw, FS("\r\n"));
-    //http_printk(trsxw, FS("Connection: keep-alive\r\n"));//HTTP persistent connection
-    http_printk(trsxw, FS("Connection: close\r\n"));   
-    http_printk(trsxw, FS("Content-Type: application/json\r\n"));
-    http_printk(trsxw, FS("api_key_write: "));http_print(trsxw, trsxw->ApiKey);http_printk(trsxw, FS("\r\n"));
-    http_printk(trsxw, FS("User-Agent: Agent/1.00\r\n"));
-    if (trsxw->HdrLine != NULL)
-        {http_print(trsxw, trsxw->HdrLine);}
-    http_printk(trsxw, FS("Content-Length: "));
+    http_printk(trsx, FS("Host: "));http_print(trsx, trsx->Host);http_printk(trsx, FS("\r\n"));
+    //http_printk(trsx, FS("Connection: keep-alive\r\n"));//HTTP persistent connection
+    http_printk(trsx, FS("Connection: close\r\n"));   
+    http_printk(trsx, FS("Content-Type: application/json\r\n"));
+    http_printk(trsx, FS("api_key_write: "));http_print(trsx, trsx->ApiKey);http_printk(trsx, FS("\r\n"));
+    http_printk(trsx, FS("User-Agent: Agent/1.00\r\n"));
+    if (trsx->HdrLine != NULL)
+        {http_print(trsx, trsx->HdrLine);}
+    http_printk(trsx, FS("Content-Length: "));
     uint32toa(json_getContentLength(json, npairs) ,  buff, sizeof(buff)/sizeof(buff[0]));
-    http_print(trsxw, buff);http_printk(trsxw, FS("\r\n"));
+    http_print(trsx, buff);http_printk(trsx, FS("\r\n"));
     
     /*3) Send New Line*/
-    http_printk(trsxw, FS("\r\n"));
+    http_printk(trsx, FS("\r\n"));
     /*4) Send msg body*/
-    http_send_msgbody(trsxw, json, npairs);http_printk(trsxw, FS("\r\n"));
+    http_send_msgbody(trsx, json, npairs);http_printk(trsx, FS("\r\n"));
     
     cod_ret = 1;
     return cod_ret;
@@ -278,37 +278,37 @@ KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT: Is the global k-timeout assigned for all rece
     #define KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT
 #endif // KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER
 
-int8_t httpTrsx_responseMsg(TRSXWR *trsxw, char *outmsg)
+int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg)
 {
     unsigned long tmr_readbuffer;
     char c;
     
     int8_t cod_ret = 0;
     
-    if (trsxw->respMsg.sm0 == 0)
+    if (trsx->respMsg.sm0 == 0)
     {
-        trsxw->respMsg.timer.responseMsg_timeout = __millis();
-        trsxw->respMsg.idx = 0;
-        trsxw->respMsg.sm1 = 0;
-        trsxw->respMsg.sm0++;
+        trsx->respMsg.timer.responseMsg_timeout = __millis();
+        trsx->respMsg.idx = 0;
+        trsx->respMsg.sm1 = 0;
+        trsx->respMsg.sm0++;
     }
-    if (trsxw->respMsg.sm0 == 1)
+    if (trsx->respMsg.sm0 == 1)
     {
         tmr_readbuffer = __millis();
         do
         {
-            if (tcpClient_getBytesAvailable(trsxw) > 0)//buffer>0
+            if (tcpClient_getBytesAvailable(trsx) > 0)//buffer>0
             {
-                c = httpClient_readChar(trsxw);
-                //httpTrsx_UARTdebug_print(trsxw, c);
+                c = httpClient_readChar(trsx);
+                //httpTrsx_UARTdebug_print(trsx, c);
                 Serial.write(c);
                     
                 if (outmsg!= NULL)
                 {
-                    outmsg[trsxw->respMsg.idx] = c;
-                    if (++trsxw->respMsg.idx >= HTTP_TRSX_RX_BUFFER_MAX_SIZE)
+                    outmsg[trsx->respMsg.idx] = c;
+                    if (++trsx->respMsg.idx >= HTTP_TRSX_RX_BUFFER_MAX_SIZE)
                     {
-                        trsxw->respMsg.idx = 0;//as circular buffer
+                        trsx->respMsg.idx = 0;//as circular buffer
                     }
                 }
                 //if (c == 'LAST_CHAR_BREAKING')
@@ -321,29 +321,29 @@ int8_t httpTrsx_responseMsg(TRSXWR *trsxw, char *outmsg)
         }
         while ((__millis() - tmr_readbuffer) <= KTIMEOUT_READBUFFER);  //CPU assigned for window
 
-        if (trsxw->respMsg.sm1 == 0)
+        if (trsx->respMsg.sm1 == 0)
         {
-            if (!tcpClient_connected(trsxw))
+            if (!tcpClient_connected(trsx))
             {
-                trsxw->respMsg.timer.afterServerDisconneted_flushbuffer = __millis();
-                trsxw->respMsg.sm1++;
+                trsx->respMsg.timer.afterServerDisconneted_flushbuffer = __millis();
+                trsx->respMsg.sm1++;
             }
         }
         else
         {
-            if ( (__millis() - trsxw->respMsg.timer.afterServerDisconneted_flushbuffer) >= KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER ) //let a time to read all rx buffer
+            if ( (__millis() - trsx->respMsg.timer.afterServerDisconneted_flushbuffer) >= KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER ) //let a time to read all rx buffer
             {
-                tcpClient_stop(trsxw);
-                trsxw->respMsg.sm0 = 0;
+                tcpClient_stop(trsx);
+                trsx->respMsg.sm0 = 0;
                 cod_ret = 1;
             }
         }
 
         //connection time-out
-        if ( (__millis() - trsxw->respMsg.timer.responseMsg_timeout) >= KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT) //abort and stop conection
+        if ( (__millis() - trsx->respMsg.timer.responseMsg_timeout) >= KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT) //abort and stop conection
         {
-            tcpClient_stop(trsxw);
-            trsxw->respMsg.sm0 = 0;
+            tcpClient_stop(trsx);
+            trsx->respMsg.sm0 = 0;
             cod_ret = 1;
         }
     }
@@ -372,40 +372,40 @@ connection information between transactions).
 void ShowSocketStatus(void);
 #endif
 
-void httpTrsx_setupServerByDomain(TRSXWR *trsxw, char *domain, uint16_t port)
+void httpTrsx_setupServerByDomain(TRSX *trsx, char *domain, uint16_t port)
 {
-    trsxw->domain = domain;
-    trsxw->port = port;
+    trsx->domain = domain;
+    trsx->port = port;
 }
-void httpTrsx_setupServerByIP(TRSXWR *trsxw, uint8_t *IP, uint16_t port)
+void httpTrsx_setupServerByIP(TRSX *trsx, uint8_t *IP, uint16_t port)
 {
-    trsxw->IP = IP;
-    trsxw->port = port;
+    trsx->IP = IP;
+    trsx->port = port;
 }
-int8_t tcpClient_connection(TRSXWR *trsxw)
+int8_t tcpClient_connection(TRSX *trsx)
 {
     int8_t cod_ret;
     
     #if defined(__AVR__) && defined(__GNUC__)
-    if (trsxw->domain != NULL)
-        cod_ret = trsxw->client->connect(trsxw->domain, trsxw->port);
+    if (trsx->domain != NULL)
+        cod_ret = trsx->client->connect(trsx->domain, trsx->port);
     else
-        cod_ret = trsxw->client->connect(trsxw->IP, trsxw->port);
+        cod_ret = trsx->client->connect(trsx->IP, trsx->port);
     #elif
     #endif
     return cod_ret;
 }
 
-int8_t httpTrsx_do1trsx(TRSXWR *trsxw, JSON *json, uint8_t npairs, char *outmsg)
+int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
 {
     static int8_t sm0;
     int8_t code_ret = 0;
 
     if (sm0 == 0)// client opens a connection
     {
-        //httpTrsx.UART_print(FS("\nNueva transaction\n"), 1);
+        //httpTrsxDebug.UART_print(FS("\nNueva transaction\n"), 1);
         
-        if (tcpClient_connection(trsxw))
+        if (tcpClient_connection(trsx))
         {
             sm0++;
         }
@@ -417,20 +417,20 @@ int8_t httpTrsx_do1trsx(TRSXWR *trsxw, JSON *json, uint8_t npairs, char *outmsg)
             Serial.println(F("Socket status in error after client.stop()"));
             #endif
 
-            tcpClient_stop(trsxw);
+            tcpClient_stop(trsx);
             code_ret = 1;
         }
     }
     if (sm0 == 1)//client->server: send request message
     {
-        if (httpTrsx_requestMsg(trsxw, json, npairs))
+        if (httpTrsx_requestMsg(trsx, json, npairs))
         {
             sm0++;
         }
     }
     if (sm0 == 2)//server->client: receive response message
     {
-        if (httpTrsx_responseMsg(trsxw, outmsg))
+        if (httpTrsx_responseMsg(trsx, outmsg))
         {
             sm0 = 0x00;
             code_ret = 1;
@@ -458,32 +458,17 @@ Status:
 IDLE,
 RUNNING
 ********************************************************************************************/
-static struct _httpTrsxExec
+int8_t httpTrsx_getStatus(TRSX *trsx)
 {
-    HTTP_TRSX_SET_EXEC_MODE_E execMode;
-    int8_t status;
-    unsigned long exec_interval_ms;//exec with interval
-    //char *rx_buffer;
-}httpTrsxExec;// = 
-//{
-//    EM_WAIT_NEW_EXEC_MODE_E,//-1
-//    IDLE,//0
-//    0,
-//    NULL
-//};
-
-int8_t httpTrsx_getStatus(void)
-{
-    return httpTrsxExec.status;
+    return trsx->exec.status;
 }
-void httpTrsx_setExecInterval_ms(unsigned long interval_ms)
+void httpTrsx_setExecInterval_ms(TRSX *trsx, unsigned long interval_ms)
 {
-    httpTrsxExec.exec_interval_ms = interval_ms;
+    trsx->exec.execInterval_ms = interval_ms;
 }
-
-void httpTrsx_setExecMode(HTTP_TRSX_SET_EXEC_MODE execMode)
+void httpTrsx_setExecMode(TRSX *trsx, HTTP_TRSX_SET_EXEC_MODE execMode)
 {
-    httpTrsxExec.execMode = execMode.k;
+    trsx->exec.execMode = execMode.k;
 }
 //void httpTrsx_setStatus(int8_t status)
 //{
@@ -510,60 +495,56 @@ return:
 0: Busy in HTTP job (synchronize RUN_ONCE, RUN_INTERVAL, STOP)
 1: End one HTTP job (end transaction): Is the time for parsing the http_trx_rx_buffer[]
 */
-//int8_t http_trx_job(JSON *json, uint8_t npairs)
-int8_t httpTrsx_job(TRSXWR *trsxwr, JSON *json, uint8_t npairs, char *outmsg)
+int8_t httpTrsx_job(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
 {
-    static HTTP_TRSX_SET_EXEC_MODE_E last_exec_mode;
-    static int8_t runInterval_sm0=0;
-    static unsigned long tmr_run_interval;
     int8_t cod_ret = 0;
     
-    if (httpTrsxExec.status == IDLE)
+    if (trsx->exec.status == IDLE)
     {
-        last_exec_mode = httpTrsxExec.execMode;
+        trsx->exec.last_execMode = trsx->exec.execMode;
 
-        if (last_exec_mode > EM_WAIT_NEW_EXEC_MODE_E)
+        if (trsx->exec.last_execMode > EM_WAIT_NEW_EXEC_MODE_E)
         {
-            if (last_exec_mode == EM_RUN_INTERVAL_E)
+            if (trsx->exec.last_execMode == EM_RUN_INTERVAL_E)
             {
-                if (runInterval_sm0 == 0)
+                if (trsx->exec.runInterval_sm0 == 0)
                 {
-                    httpTrsxExec.status = RUNNING;
-                    runInterval_sm0++;	
+                    trsx->exec.status = RUNNING;
+                    trsx->exec.runInterval_sm0++;	
                     /*execute 1 HTTP transaction, then comeback to here to continue with runInterval_sm0=1*/
                 }
-                else if (runInterval_sm0 == 1)//for next evaluation
+                else if (trsx->exec.runInterval_sm0 == 1)//for next evaluation
                 {
-                    tmr_run_interval = __millis();
-                    runInterval_sm0++;
+                    trsx->exec.tmr_runInterval = __millis();
+                    trsx->exec.runInterval_sm0++;
                 }
-                else if (runInterval_sm0 == 2)
+                else if (trsx->exec.runInterval_sm0 == 2)
                 {
-                    if ( (__millis()-tmr_run_interval) >= httpTrsxExec.exec_interval_ms)
+                    if ( (__millis()-trsx->exec.tmr_runInterval) >= trsx->exec.execInterval_ms)
                     {
-                        runInterval_sm0 = 0x00;
+                        trsx->exec.runInterval_sm0 = 0x00;
                     }
                 }
             }
-            else if (last_exec_mode == EM_RUN_ONCE_E)
+            else if (trsx->exec.last_execMode == EM_RUN_ONCE_E)
             {
-                httpTrsxExec.status = RUNNING;
+                trsx->exec.status = RUNNING;
             }
             else//STOP
             {
-                httpTrsx_setExecMode(EM_WAIT_NEW_EXEC_MODE);
-                runInterval_sm0 = 0x00;	//reset
+                httpTrsx_setExecMode(trsx, EM_WAIT_NEW_EXEC_MODE);
+                trsx->exec.runInterval_sm0 = 0x00;	//reset
             }
         }
     }
     else
     {
-        if ( httpTrsx_do1trsx(trsxwr, json, npairs, outmsg) == 1)//end?
+        if ( httpTrsx_do1trsx(trsx, json, npairs, outmsg) == 1)//end?
         {
-            httpTrsxExec.status = IDLE;
+            trsx->exec.status = IDLE;
 
-            if (last_exec_mode == EM_RUN_ONCE_E)
-                {httpTrsx_setExecMode(EM_STOP);}
+            if (trsx->exec.last_execMode == EM_RUN_ONCE_E)
+                {httpTrsx_setExecMode(trsx, EM_STOP);}
             
             cod_ret = 1;//1 transaction was completed
         }
