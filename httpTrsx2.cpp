@@ -263,8 +263,8 @@ KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT: Is the global k-timeout assigned for all rece
 //{
 //}ktimeOut;
 #define KTIMEOUT_READBUFFER                             10UL//ms
-#define KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER    700UL//ms
-#define KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT               2000UL//ms
+#define KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER    0UL//ms
+#define KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT               6000UL//ms
 
 #if KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER > KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT
     #undef KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER
@@ -344,7 +344,7 @@ int8_t httpTrsx_responseMsg(TRSXWR *trsxw, char *outmsg)
 }
 
 /*
-                1 HTTP transaction
+1 HTTP transaction
 
 Like most network protocols, HTTP uses the client-server model: An HTTP
 client opens a connection and sends a request message to an HTTP server;
@@ -396,6 +396,8 @@ int8_t httpTrsx_do1trsx(TRSXWR *trsxw, JSON *json, uint8_t npairs, char *outmsg)
 
     if (sm0 == 0)// client opens a connection
     {
+        //httpTrsx.UART_print(FS("\nNueva transaction\n"), 1);
+        
         if (tcpClient_connection(trsxw))
         {
             sm0++;
@@ -449,67 +451,69 @@ Status:
 IDLE,
 RUNNING
 ********************************************************************************************/
-struct _httpTrsx_t
+static struct _httpTrsxExec
 {
     HTTP_TRSX_SET_EXEC_MODE_E execMode;
     int8_t status;
     unsigned long exec_interval_ms;//exec with interval
-    char *rx_buffer;
-};
-struct _httpTrsx_t httpTrsx_t =
-{
-    EM_WAIT_NEW_EXEC_MODE_E,//-1
-    IDLE,//0
-    0,
-    NULL
-};
-void httpTrsx_setStatus(int8_t status)
-{
-    httpTrsx_t.status = status;
-}
+    //char *rx_buffer;
+}httpTrsxExec;// = 
+//{
+//    EM_WAIT_NEW_EXEC_MODE_E,//-1
+//    IDLE,//0
+//    0,
+//    NULL
+//};
+
 int8_t httpTrsx_getStatus(void)
 {
-    return httpTrsx_t.status;
+    return httpTrsxExec.status;
 }
-void httpTrsx_setExec_interval_ms(unsigned long interval_ms)
+void httpTrsx_setExecInterval_ms(unsigned long interval_ms)
 {
-    httpTrsx_t.exec_interval_ms = interval_ms;
+    httpTrsxExec.exec_interval_ms = interval_ms;
 }
-unsigned long httpTrsx_getExec_interval_ms(void)
-{
-    return httpTrsx_t.exec_interval_ms;
-}
-void httpTrsx_setRxBuffer(char *rx_buffer)
-{
-    httpTrsx_t.rx_buffer = rx_buffer;
-}
-char *httpTrsx_getRxBuffer(void)
-{
-    return httpTrsx_t.rx_buffer;
-}
+
 void httpTrsx_setExecMode(HTTP_TRSX_SET_EXEC_MODE execMode)
 {
-    httpTrsx_t.execMode = execMode.k;
+    httpTrsxExec.execMode = execMode.k;
 }
-HTTP_TRSX_SET_EXEC_MODE_E httpTrsx_getExecMode(void)
-{
-    return httpTrsx_t.execMode;
-}
+//void httpTrsx_setStatus(int8_t status)
+//{
+//    httpTrsx_t.status = status;
+//}
+//unsigned long httpTrsx_getExec_interval_ms(void)
+//{
+//    return httpTrsx_t.exec_interval_ms;
+//}
+//HTTP_TRSX_SET_EXEC_MODE_E httpTrsx_getExecMode(void)
+//{
+//    return httpTrsx_t.execMode;
+//}
+//void httpTrsx_setRxBuffer(char *rx_buffer)
+//{
+//    httpTrsx_t.rx_buffer = rx_buffer;
+//}
+//char *httpTrsx_getRxBuffer(void)
+//{
+//    return httpTrsx_t.rx_buffer;
+//}
 /*
 return:
 0: Busy in HTTP job (synchronize RUN_ONCE, RUN_INTERVAL, STOP)
 1: End one HTTP job (end transaction): Is the time for parsing the http_trx_rx_buffer[]
 */
-int8_t http_trx_job(JSON *json, uint8_t npairs)
+//int8_t http_trx_job(JSON *json, uint8_t npairs)
+int8_t httpTrsx_job(TRSXWR *trsxwr, JSON *json, uint8_t npairs, char *outmsg)
 {
     static HTTP_TRSX_SET_EXEC_MODE_E last_exec_mode;
     static int8_t runInterval_sm0=0;
     static unsigned long tmr_run_interval;
     int8_t cod_ret = 0;
     
-    if (httpTrsx_t.status == IDLE)
+    if (httpTrsxExec.status == IDLE)
     {
-        last_exec_mode = httpTrsx_t.execMode;
+        last_exec_mode = httpTrsxExec.execMode;
 
         if (last_exec_mode > EM_WAIT_NEW_EXEC_MODE_E)
         {
@@ -517,9 +521,9 @@ int8_t http_trx_job(JSON *json, uint8_t npairs)
             {
                 if (runInterval_sm0 == 0)
                 {
-                    httpTrsx_t.status = RUNNING;
+                    httpTrsxExec.status = RUNNING;
                     runInterval_sm0++;	
-                    /*execute 1 HTTP transaction, then comeback to here with runInterval_sm0=1*/
+                    /*execute 1 HTTP transaction, then comeback to here to continue with runInterval_sm0=1*/
                 }
                 else if (runInterval_sm0 == 1)//for next evaluation
                 {
@@ -528,7 +532,7 @@ int8_t http_trx_job(JSON *json, uint8_t npairs)
                 }
                 else if (runInterval_sm0 == 2)
                 {
-                    if ( (__millis()-tmr_run_interval) >= httpTrsx_t.exec_interval_ms)
+                    if ( (__millis()-tmr_run_interval) >= httpTrsxExec.exec_interval_ms)
                     {
                         runInterval_sm0 = 0x00;
                     }
@@ -536,7 +540,7 @@ int8_t http_trx_job(JSON *json, uint8_t npairs)
             }
             else if (last_exec_mode == EM_RUN_ONCE_E)
             {
-                httpTrsx_t.status = RUNNING;
+                httpTrsxExec.status = RUNNING;
             }
             else//STOP
             {
@@ -547,14 +551,14 @@ int8_t http_trx_job(JSON *json, uint8_t npairs)
     }
     else
     {
-        if (1)//(httpTrsx_do1trsx(json, npairs) == 1)//end?
+        if ( httpTrsx_do1trsx(trsxwr, json, npairs, outmsg) == 1)//end?
         {
-            httpTrsx_t.status = IDLE;
+            httpTrsxExec.status = IDLE;
 
             if (last_exec_mode == EM_RUN_ONCE_E)
                 {httpTrsx_setExecMode(EM_STOP);}
             
-            cod_ret = 1;//1 execution was completed
+            cod_ret = 1;//1 transaction was completed
         }
     }
     return cod_ret;

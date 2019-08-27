@@ -11,11 +11,6 @@ uint8_t MAC[6]= { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 //char server[] = "api.quanticoservices.net";
 uint8_t IPaddr_server[]={192, 168, 1, 54};
 
-//HTTP transaction: receive response message from Server (if parsing)
-//#define HTTP_TRSX_RX_BUFFER
-#ifdef HTTP_TRSX_RX_BUFFER
-char http_trx_rx_buffer[HTTP_TRSX_RX_BUFFER_MAX_SIZE];//as circular buffer
-#endif
 
 //void json_cIntegerArr
 void json_cFloatArr(float *v, int size, char *outbuff)
@@ -109,10 +104,6 @@ void setup(void)
     httpTrsxWrite_setApiKey("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE1MzU0MjczNTVfcGFibG8iLCJkZXZpY2VfaWQiOiI1YjdmMjc3ZmVmNGFkNjgxYjIwM2I0NDQiLCJlbWFpbCI6InBhYmxvZG9uYXlyZUBnbWFpbC5jb20iLCJpYXQiOjE1NjQwODgwMjR9.G8BWFQ1O_KH4hVfibYSlGd-UqQLdWZ1d_sxonbhqANc");
 
     
-    //4) Http transaction setting
-    //http_trx_set_exec_interval_ms(0);//ms
-    //http_trx_set_exec_mode(EM_RUN_INTERVAL);//RUN_ONCE
-        //http_trx_set_rx_buffer(http_trx_rx_buffer);//NULL pointer by defect
     //
     json[0].name = "m1";
     
@@ -120,33 +111,26 @@ void setup(void)
     // char strval[30];
     // json_cFloatArr(value, sizeof(strval)/sizeof(strval[0]), strval);
     //json[0].strval = strval;
-    json[0].strval = "[7,45,4,4]";
+    json[0].strval = "[756,9.3,4.8,4.69]";
+
+    //4) Http transaction setting
+    httpTrsx_setExecInterval_ms(1000);//ms
+    httpTrsx_setExecMode(EM_RUN_INTERVAL);//RUN_ONCE
 }
 
 char outmsg[HTTP_TRSX_RX_BUFFER_MAX_SIZE];
 
-int8_t httpTrsx_do1trsx(TRSXWR *trsxwr, JSON *json, uint8_t npairs, char *outmsg);
-
+//int8_t httpTrsx_do1trsx(TRSXWR *trsxwr, JSON *json, uint8_t npairs, char *outmsg);
+int c;
 void loop(void)
 {
     
-    /*
-    if (http_trx_job())//complete a client->server transaction, then...
+    if (httpTrsx_job(&httpTrsx.trsxw, json, 1, outmsg))
     {
-      //its safe to read http_trx_rx_buffer[]
-        #ifdef HTTP_TRSX_RX_BUFFER
-          nt_debug_print("Printing http_trx_rx_buffer[]:\n\n");
-          if (http_trx_get_rx_buffer()!= NULL)
-          {
-            for (int i=0; i<HTTP_TRSX_RX_BUFFER_MAX_SIZE; i++)
-              {nt_debug_print(http_trx_rx_buffer[i]);}  
-          }
-        #endif
+        if (++c == 3)
+        {
+            httpTrsx_setExecMode(EM_STOP);
+        }
     }
-    */
-
-    if (httpTrsx_do1trsx(&httpTrsx.trsxw, json, 1, outmsg) )
-    {
-        while (1);
-    }
+    
 }

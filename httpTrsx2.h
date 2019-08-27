@@ -143,10 +143,16 @@ void httpTrsx_setupServerByIP(TRSXWR *trsxw, uint8_t *IP, uint16_t port);
 /******************************************************************************************/
 typedef enum _http_trx_set_exec_mode_e
 {
-	EM_WAIT_NEW_EXEC_MODE_E = -1,
-	EM_STOP_E = 0,
-	EM_RUN_ONCE_E,
+//	EM_WAIT_NEW_EXEC_MODE_E = -1,
+//	EM_STOP_E = 0,
+//	EM_RUN_ONCE_E,
+//	EM_RUN_INTERVAL_E,
+                
+        EM_WAIT_NEW_EXEC_MODE_E = 0,
 	EM_RUN_INTERVAL_E,
+	EM_RUN_ONCE_E,
+        EM_STOP_E,
+                
 }
 HTTP_TRSX_SET_EXEC_MODE_E;
 
@@ -166,8 +172,13 @@ enum _http_trx_set_status
 	RUNNING
 };
 
-#define HTTP_TRSX_RX_BUFFER_MAX_SIZE 400
+#define HTTP_TRSX_RX_BUFFER_MAX_SIZE 200
 
+int8_t httpTrsx_getStatus(void);
+void httpTrsx_setExecInterval_ms(unsigned long interval_ms);
+void httpTrsx_setExecMode(HTTP_TRSX_SET_EXEC_MODE execMode);
+
+int8_t httpTrsx_job(TRSXWR *trsxwr, JSON *json, uint8_t npairs, char *outmsg);
 
 #ifdef __cplusplus
 extern "C" {
