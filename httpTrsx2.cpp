@@ -84,7 +84,10 @@ int8_t NIC_begin(uint8_t *MAC, uint8_t *IPstatic)
 }
 void NIC_getMyIP(char *str, uint16_t sizebuff)
 {
+    #if defined(__AVR__) && defined(__GNUC__)
     snprintf(str, sizebuff, "%d.%d.%d.%d", Ethernet.localIP()[0], Ethernet.localIP()[1], Ethernet.localIP()[2], Ethernet.localIP()[3]);
+    #elif
+    #endif
 }
 /******************************************************************************************/
 #if defined(__AVR__) && defined(__GNUC__)
@@ -133,8 +136,10 @@ char httpClient_readChar(TRSXWR *trsxw)
 void http_print(TRSXWR *trsxw, const char *s)
 {
     #if defined(__AVR__) && defined(__GNUC__)
-          trsxw->client->print(s);
-          httpTrsx_UARTdebug_print(trsxw, s, 0);
+        trsxw->client->print(s);
+        #ifdef HTTPTRSX_DEBUG
+            httpTrsx_UARTdebug_print(trsxw, s, 0);
+        #endif  
     #elif
     #endif
 }
@@ -143,7 +148,9 @@ void http_printk(TRSXWR *trsxw, char *s)
 {
     #ifdef FS_STRING
         trsxw->client->print(reinterpret_cast <const __FlashStringHelper *> (s) );
-        httpTrsx_UARTdebug_print(trsxw, s, 1);
+        #ifdef HTTPTRSX_DEBUG
+            httpTrsx_UARTdebug_print(trsxw, s, 1);
+        #endif
     #else
       http_print(trsxw, s);
     #endif

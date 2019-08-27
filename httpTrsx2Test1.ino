@@ -92,8 +92,10 @@ void setup(void)
     //2) Client config connection to server
     
     httpTrsxWrite_setClient((Client*)&client);//Only for Arduino
-    httpTrsx_UARTdebug_setPrintFx(UART_print);//library point to this funcion()
-    httpTrsxWrite_UARTdebug_enabled(TRUE);
+    #ifdef HTTPTRSX_DEBUG
+        httpTrsx_UARTdebug_setPrintFx(UART_print);//library point to this funcion()
+        httpTrsxWrite_UARTdebug_enabled(TRUE);
+    #endif
     
     httpTrsxWrite_setupServerByIP(IPaddr_server, 80);
     //client.setTimeout(1000);
