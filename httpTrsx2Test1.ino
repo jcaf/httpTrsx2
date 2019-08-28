@@ -15,19 +15,22 @@ uint8_t IPaddr_server[]={192, 168, 1, 54};
 //void json_cIntegerArr
 void json_cFloatArr(float *v, int size, char *outbuff)
 {
-    char buff[10];
+    char buff[20];
     
-    int i=0;
+    int i;
     strcpy(outbuff,"[");
     
     for (i=0; i< size; i++)
     {
-        //sprintf(buff, "%.2f", v[i]);
+		#if defined(__AVR__) && defined(__GNUC__)
+    	dtostrf(v[i], 0, 2, buff);
+		#elif
         snprintf(buff, sizeof(buff), "%.2f", v[i]);
+		#endif
         
         strcat(outbuff, buff);//alternatevly use strlcat
         
-        if (i != size-1)
+        if (i < size-1)
             strcat(outbuff, ",");
     }
     strcat(outbuff,"]");
@@ -74,70 +77,132 @@ void UART_setup(void)
 
 EthernetClient client;
 
+//
 #define JSON_SIZEMAX 1//4
-JSON json[JSON_SIZEMAX];
+JSON jsonw[JSON_SIZEMAX];
+JSON jsonr[JSON_SIZEMAX];
+char strval[30];
+char strval1[30];
 
 #define TRSX_NUMMAX 2
 TRSX trsx[TRSX_NUMMAX];
 
 void setup(void)
 {
-  char buff[30];
+	char buff[30];
     spi_deselect_devices();
     
     UART_setup();
+	#ifdef HTTPTRSX_DEBUG
+    httpTrsx_UARTdebug_setPrintFx(UART_print);//library point to this funcion()
+	#endif    
     
     //1) local network setting
     NIC_begin(MAC, IP);//by default DHCP
     NIC_getMyIP(buff, sizeof(buff));
-    UART_print(buff,0);
+    UART_print(PSTR("My IP: "),1); UART_print(buff,0); UART_print(PSTR("\n"),1);
     delay(1000);
     
-    //2) Client config connection to server
-    
-    httpTrsx_setClient(&trsx[0], (Client*)&client);//Only for Arduino
-    //client.setTimeout(1000);
-    #ifdef HTTPTRSX_DEBUG
-        httpTrsx_UARTdebug_setPrintFx(UART_print);//library point to this funcion()
-        httpTrsx_UARTdebug_enabled(&trsx[0], TRUE);
-    #endif
-    
+    //2) Set trsx[0] 
+	httpTrsx_setClient(&trsx[0], (Client*)&client);//Only for Arduinochar strval[30];//client.setTimeout(1000);
     httpTrsx_setupServerByIP(&trsx[0], IPaddr_server, 80);
-    
-    
-    //3) Set HTTP transaction
     httpTrsx_setURI(&trsx[0], "/jsondecode.php");
     httpTrsx_setHost(&trsx[0], "192.168.1.54");
     httpTrsx_setApiKey(&trsx[0], "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE1MzU0MjczNTVfcGFibG8iLCJkZXZpY2VfaWQiOiI1YjdmMjc3ZmVmNGFkNjgxYjIwM2I0NDQiLCJlbWFpbCI6InBhYmxvZG9uYXlyZUBnbWFpbC5jb20iLCJpYXQiOjE1NjQwODgwMjR9.G8BWFQ1O_KH4hVfibYSlGd-UqQLdWZ1d_sxonbhqANc");
-
-    
-    //
-    json[0].name = "m1";
-    
-    // float value[4] = {1,2,3,4};
-    // char strval[30];
-    // json_cFloatArr(value, sizeof(strval)/sizeof(strval[0]), strval);
-    //json[0].strval = strval;
-    json[0].strval = "[756,88.6,4.8,4.69]";
-
-    //4) Http transaction setting
     httpTrsx_setExecInterval_ms(&trsx[0], 1000);//ms
-    httpTrsx_setExecMode(&trsx[0], EM_RUN_INTERVAL);//RUN_ONCE
+	httpTrsx_setExecMode(&trsx[0], EM_RUN_ONCE);//RUN_ONCE EM_RUN_INTERVAL
+	#ifdef HTTPTRSX_DEBUG
+	httpTrsx_UARTdebug_enabled(&trsx[0], TRUE);
+	#endif
+	
+	//2) Set trsx[1] 
+	httpTrsx_setClient(&trsx[1], (Client*)&client);//Only for Arduinochar strval[30];//client.setTimeout(1000);
+	httpTrsx_setupServerByIP(&trsx[1], IPaddr_server, 80);
+	httpTrsx_setURI(&trsx[1], "/jsondecode1.php");
+	httpTrsx_setHost(&trsx[1], "192.168.1.54");
+	httpTrsx_setApiKey(&trsx[1], "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE1MzU0MjczNTVfcGFibG8iLCJkZXZpY2VfaWQiOiI1YjdmMjc3ZmVmNGFkNjgxYjIwM2I0NDQiLCJlbWFpbCI6InBhYmxvZG9uYXlyZUBnbWFpbC5jb20iLCJpYXQiOjE1NjQwODgwMjR9.G8BWFQ1O_KH4hVfibYSlGd-UqQLdWZ1d_sxonbhqANc");
+	httpTrsx_setExecInterval_ms(&trsx[1], 1000);//ms
+	httpTrsx_setExecMode(&trsx[1], EM_RUN_ONCE);//RUN_ONCE EM_RUN_INTERVAL
+	#ifdef HTTPTRSX_DEBUG
+	httpTrsx_UARTdebug_enabled(&trsx[1], TRUE);
+	#endif
+    
+	jsonw[0].name = "m1";
+	float value[4] = {1,2,3,4};
+    json_cFloatArr(value, 4, strval);
+    jsonw[0].strval = strval;
+    //json[0].strval = "[756,123.5,4.8,4.69]";
+    
+    jsonr[0].name = "m1";
+	float value1[4] = {9,8,7,6};
+	json_cFloatArr(value1, 4, strval1);
+	jsonr[0].strval = strval1;
 }
 
 char outmsg[HTTP_TRSX_RX_BUFFER_MAX_SIZE];
-
-
-int c;
+/*
+void httpTrsx_man(void)
+{
+	static int8_t sm0;
+	
+	if (sm0 == 0)
+	{
+		if (httpTrsx_job(&trsx[0], jsonw, 1, (void*)NULL))
+		{
+			sm0++;
+		}
+	}
+	else if (sm0 == 1)
+	{
+		if (httpTrsx_job(&trsx[1], jsonr, 1, (void*)NULL))
+		{
+			sm0 = 0x00;
+		}
+	}
+}
+*/
+/*
+ * */
+void httpTrsx_man1(void)
+{
+	static int8_t sm0;
+	int8_t cod_ret=0;
+	if (sm0 == 0)
+	{
+		if (httpTrsx_job(&trsx[0], jsonw, 1, (void*)NULL) == 1)
+		{
+			sm0++;
+		}
+	}
+	else if (sm0 == 1)
+	{
+		cod_ret = httpTrsx_job(&trsx[1], jsonr, 1, (void*)NULL);
+		if (cod_ret>0)
+		{
+			//test en todos los casos
+			
+			if (cod_ret == 1)//finish transmision
+			{
+				sm0 = 0x00;
+			}
+			
+		}
+	}
+}
+/*
+void httpTrsx_test1(void)
+{
+	static int c;
+	//if (httpTrsx_job(&trsx[0], json, 1, outmsg))
+	if (httpTrsx_job(&trsx[0], jsonw, 1, (void*)NULL))
+		if (++c == 3)
+			{httpTrsx_setExecMode(&trsx[0], EM_STOP);}
+}
+*/
 void loop(void)
 {
-    
-    if (httpTrsx_job(&trsx[0], json, 1, outmsg))
-    {
-        if (++c == 3)
-        {
-            httpTrsx_setExecMode(&trsx[0], EM_STOP);
-        }
-    }
-    
+	//httpTrsx_test1();
+	//httpTrsx_man();
+	httpTrsx_man1();
 }
+

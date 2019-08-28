@@ -278,6 +278,8 @@ KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT: Is the global k-timeout assigned for all rece
     #define KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT
 #endif // KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER
 
+//1=finish
+//2=outmsg is already to parse
 int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg)
 {
     unsigned long tmr_readbuffer;
@@ -310,9 +312,9 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg)
                     {
                         trsx->respMsg.idx = 0;//as circular buffer
                     }
+                    cod_ret = 2;
                 }
-                //if (c == 'LAST_CHAR_BREAKING')
-                //	break;
+                //if (c == 'LAST_CHAR_BREAKING')break;
             }
             else
             {
@@ -396,10 +398,12 @@ int8_t tcpClient_connection(TRSX *trsx)
     return cod_ret;
 }
 
+//1=finish
+//2=outmsg is already to parse
 int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
 {
     static int8_t sm0;
-    int8_t code_ret = 0;
+    int8_t cod_ret = 0;
 
     if (sm0 == 0)// client opens a connection
     {
@@ -418,7 +422,7 @@ int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
             #endif
 
             tcpClient_stop(trsx);
-            code_ret = 1;
+            cod_ret = 1;
         }
     }
     if (sm0 == 1)//client->server: send request message
@@ -430,10 +434,14 @@ int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
     }
     if (sm0 == 2)//server->client: receive response message
     {
-        if (httpTrsx_responseMsg(trsx, outmsg))
+        //if (httpTrsx_responseMsg(trsx, outmsg))
+        cod_ret = httpTrsx_responseMsg(trsx, outmsg);
+        //1=finish
+		//2=outmsg is already to parse
+        if (cod_ret == 1)
         {
             sm0 = 0x00;
-            code_ret = 1;
+            cod_ret = 1;
         }
     }
     
@@ -441,7 +449,7 @@ int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
     ShowSocketStatus();
     #endif
     
-    return code_ret;
+    return cod_ret;
 }
 
 /*******************************************************************************************
@@ -539,18 +547,24 @@ int8_t httpTrsx_job(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
     }
     else
     {
-        if ( httpTrsx_do1trsx(trsx, json, npairs, outmsg) == 1)//end?
+    	//if ( httpTrsx_do1trsx(trsx, json, npairs, outmsg) == 1)//end?
+    	cod_ret = httpTrsx_do1trsx(trsx, json, npairs, outmsg);
+        //1=finish
+    	//2=outmsg is already to parse
+		if (cod_ret == 1)//end?
         {
             trsx->exec.status = IDLE;
 
             if (trsx->exec.last_execMode == EM_RUN_ONCE_E)
                 {httpTrsx_setExecMode(trsx, EM_STOP);}
             
-            cod_ret = 1;//1 transaction was completed
+            //cod_ret = 1;//1 transaction was completed
         }
     }
     return cod_ret;
 }
+
+
 
 //////////////////////////////////////////////////////////////////////////////////
 #ifdef SOCKET_DEBUG
@@ -601,3 +615,5 @@ void ShowSocketStatus(void)
     }
 }
 #endif
+
+
