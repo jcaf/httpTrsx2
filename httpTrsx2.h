@@ -67,11 +67,11 @@ typedef struct _TRSX
         int8_t sm1;
         struct _TRSXWRresp_tmr
         {
-            unsigned long responseMsg_timeout;
+            unsigned long responseMsg_totalTimeout;
             unsigned long afterServerDisconneted_flushbuffer;
         }timer;
         
-        uint32_t idx;
+        //uint16_t idx;
     }respMsg;
     
     #if defined(__AVR__) && defined(__GNUC__)  
@@ -153,13 +153,13 @@ void httpTrsx_setHdrLine(TRSX *trsx, char *HdrLine);
 
 /******************************************************************************************/
 
-#define HTTP_TRSX_RX_BUFFER_MAX_SIZE 200
+//#define HTTP_TRSX_RX_BUFFER_MAX_SIZE 200
 
 int8_t httpTrsx_getStatus(TRSX *trsx);
 void httpTrsx_setExecInterval_ms(TRSX *trsx, unsigned long interval_ms);
 void httpTrsx_setExecMode(TRSX *trsx, HTTP_TRSX_SET_EXEC_MODE execMode);
 
-int8_t httpTrsx_job(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg);
+int8_t httpTrsx_job(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg, uint16_t outmsgSize);
 
 #ifdef __cplusplus
 extern "C" {

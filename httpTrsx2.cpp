@@ -220,7 +220,7 @@ int8_t httpTrsx_requestMsg(TRSX *trsx, JSON *json, uint8_t npairs)//send the req
     //http_printk(trsx, FS("Connection: keep-alive\r\n"));//HTTP persistent connection
     http_printk(trsx, FS("Connection: close\r\n"));   
     http_printk(trsx, FS("Content-Type: application/json\r\n"));
-    http_printk(trsx, FS("api_key_write: "));http_print(trsx, trsx->ApiKey);http_printk(trsx, FS("\r\n"));
+    http_printk(trsx, FS("api_key: "));http_print(trsx, trsx->ApiKey);http_printk(trsx, FS("\r\n"));
     http_printk(trsx, FS("User-Agent: Agent/1.00\r\n"));
     if (trsx->HdrLine != NULL)
         {http_print(trsx, trsx->HdrLine);}
@@ -280,23 +280,63 @@ KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT: Is the global k-timeout assigned for all rece
 
 //1=finish
 //2=outmsg is already to parse
-int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg)
+int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg, uint16_t outmsgSize)
 {
     unsigned long tmr_readbuffer;
     char c;
-    
+    uint16_t idx;
     int8_t cod_ret = 0;
+
+    int sk=0;
     
     if (trsx->respMsg.sm0 == 0)
     {
-        trsx->respMsg.timer.responseMsg_timeout = __millis();
-        trsx->respMsg.idx = 0;
+        trsx->respMsg.timer.responseMsg_totalTimeout = __millis();
+        //trsx->respMsg.idx = 0;
+
         trsx->respMsg.sm1 = 0;
         trsx->respMsg.sm0++;
+
+        //++--
+        //client.find("\r\n\r\n");
+		while (1)//(tcpClient_getBytesAvailable(trsx) > 0)
+		{
+			if (sk == 0)
+			{
+				if (httpClient_readChar(trsx) == '\r')
+					sk++;
+			}
+			if (sk == 1)
+			{
+				if (httpClient_readChar(trsx) == '\n')
+					sk++;
+				else
+					sk = 0;
+			}
+			if (sk == 2)
+			{
+				if (httpClient_readChar(trsx) == '\r')
+					sk++;
+				else
+					sk=  0;
+			}
+			if (sk == 3)
+			{
+				if (httpClient_readChar(trsx) == '\n')
+					{sk++;
+					break;
+					}
+				else
+					sk = 0;
+			}
+		}
+		//--+
+
     }
     if (trsx->respMsg.sm0 == 1)
     {
         tmr_readbuffer = __millis();
+        idx = 0;
         do
         {
             if (tcpClient_getBytesAvailable(trsx) > 0)//buffer>0
@@ -307,11 +347,10 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg)
                     
                 if (outmsg!= NULL)
                 {
-                    outmsg[trsx->respMsg.idx] = c;
-                    if (++trsx->respMsg.idx >= HTTP_TRSX_RX_BUFFER_MAX_SIZE)
-                    {
-                        trsx->respMsg.idx = 0;//as circular buffer
-                    }
+                    outmsg[idx] = c;
+                    if (++idx >= outmsgSize)//as circular buffer
+                    	{idx = 0;}
+                    //
                     cod_ret = 2;
                 }
                 //if (c == 'LAST_CHAR_BREAKING')break;
@@ -342,7 +381,7 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg)
         }
 
         //connection time-out
-        if ( (__millis() - trsx->respMsg.timer.responseMsg_timeout) >= KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT) //abort and stop conection
+        if ( (__millis() - trsx->respMsg.timer.responseMsg_totalTimeout) >= KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT) //abort and stop conection
         {
             tcpClient_stop(trsx);
             trsx->respMsg.sm0 = 0;
@@ -400,7 +439,7 @@ int8_t tcpClient_connection(TRSX *trsx)
 
 //1=finish
 //2=outmsg is already to parse
-int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
+int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg, uint16_t outmsgSize)
 {
     static int8_t sm0;
     int8_t cod_ret = 0;
@@ -435,7 +474,7 @@ int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
     if (sm0 == 2)//server->client: receive response message
     {
         //if (httpTrsx_responseMsg(trsx, outmsg))
-        cod_ret = httpTrsx_responseMsg(trsx, outmsg);
+        cod_ret = httpTrsx_responseMsg(trsx, outmsg, outmsgSize);
         //1=finish
 		//2=outmsg is already to parse
         if (cod_ret == 1)
@@ -503,7 +542,7 @@ return:
 0: Busy in HTTP job (synchronize RUN_ONCE, RUN_INTERVAL, STOP)
 1: End one HTTP job (end transaction): Is the time for parsing the http_trx_rx_buffer[]
 */
-int8_t httpTrsx_job(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
+int8_t httpTrsx_job(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg, uint16_t outmsgSize)
 {
     int8_t cod_ret = 0;
     
@@ -548,7 +587,7 @@ int8_t httpTrsx_job(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg)
     else
     {
     	//if ( httpTrsx_do1trsx(trsx, json, npairs, outmsg) == 1)//end?
-    	cod_ret = httpTrsx_do1trsx(trsx, json, npairs, outmsg);
+    	cod_ret = httpTrsx_do1trsx(trsx, json, npairs, outmsg, outmsgSize);
         //1=finish
     	//2=outmsg is already to parse
 		if (cod_ret == 1)//end?

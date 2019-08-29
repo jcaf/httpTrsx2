@@ -110,7 +110,7 @@ void setup(void)
     httpTrsx_setHost(&trsx[0], "192.168.1.54");
     httpTrsx_setApiKey(&trsx[0], "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE1MzU0MjczNTVfcGFibG8iLCJkZXZpY2VfaWQiOiI1YjdmMjc3ZmVmNGFkNjgxYjIwM2I0NDQiLCJlbWFpbCI6InBhYmxvZG9uYXlyZUBnbWFpbC5jb20iLCJpYXQiOjE1NjQwODgwMjR9.G8BWFQ1O_KH4hVfibYSlGd-UqQLdWZ1d_sxonbhqANc");
     httpTrsx_setExecInterval_ms(&trsx[0], 1000);//ms
-	httpTrsx_setExecMode(&trsx[0], EM_RUN_ONCE);//RUN_ONCE EM_RUN_INTERVAL
+	httpTrsx_setExecMode(&trsx[0], EM_RUN_INTERVAL);//RUN_ONCE EM_RUN_INTERVAL
 	#ifdef HTTPTRSX_DEBUG
 	httpTrsx_UARTdebug_enabled(&trsx[0], TRUE);
 	#endif
@@ -122,7 +122,7 @@ void setup(void)
 	httpTrsx_setHost(&trsx[1], "192.168.1.54");
 	httpTrsx_setApiKey(&trsx[1], "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE1MzU0MjczNTVfcGFibG8iLCJkZXZpY2VfaWQiOiI1YjdmMjc3ZmVmNGFkNjgxYjIwM2I0NDQiLCJlbWFpbCI6InBhYmxvZG9uYXlyZUBnbWFpbC5jb20iLCJpYXQiOjE1NjQwODgwMjR9.G8BWFQ1O_KH4hVfibYSlGd-UqQLdWZ1d_sxonbhqANc");
 	httpTrsx_setExecInterval_ms(&trsx[1], 1000);//ms
-	httpTrsx_setExecMode(&trsx[1], EM_RUN_ONCE);//RUN_ONCE EM_RUN_INTERVAL
+	httpTrsx_setExecMode(&trsx[1], EM_RUN_INTERVAL);//RUN_ONCE EM_RUN_INTERVAL
 	#ifdef HTTPTRSX_DEBUG
 	httpTrsx_UARTdebug_enabled(&trsx[1], TRUE);
 	#endif
@@ -138,8 +138,6 @@ void setup(void)
 	json_cFloatArr(value1, 4, strval1);
 	jsonr[0].strval = strval1;
 }
-
-char outmsg[HTTP_TRSX_RX_BUFFER_MAX_SIZE];
 /*
 void httpTrsx_man(void)
 {
@@ -163,23 +161,193 @@ void httpTrsx_man(void)
 */
 /*
  * */
+//++++++++++++++++++++++++++++++++++++++++++++++++++
+int8_t charIsNumber(char c)
+{
+	if ((c>='0') && (c<='9'))
+		return 1;
+	else
+		return 0;
+}
+
+int8_t charIsLetter(char c)
+{
+	if ( ( (c>='A') && (c<='Z')) || ( (c>='a') && (c<='z') ) )
+		return 1;
+	else
+		return 0;
+}
+
+//////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////
+int8_t jsonDecode(char *stream, uint16_t streamSize, JSON *json)
+{
+	static int16_t i;
+	uint16_t iname = 0;
+	uint16_t ivalue = 0;
+	int8_t cod_ret = 0;
+
+	int8_t sm0 = 0;
+	int8_t sm1 = 0;
+
+	while (1)
+	{
+		if (sm0 == 0)
+		{
+			if (stream[i] == '\"')
+			{
+				iname= i+1;//save initial position
+				sm0++;
+			}
+		}
+		else if (sm0 == 1)//cannot be " or any diferent to 'A-Z''a'b or"0.9"
+		{
+			if (stream[i] == '\"')//= 'A-Z') ) //letras y numeros
+				sm0 = 0x00;
+			else
+				sm0++;
+		}
+		else if (sm0 == 2)
+		{
+			if (stream[i] == '\"')
+			{
+				sm0++;
+			}
+			else
+            {
+                if ( !charIsLetter(stream[i]) && !charIsNumber(stream[i]) )
+                {
+                    sm0 = 0x00;
+                }
+            }
+		}
+		else if (sm0 == 3)
+		{
+			if (stream[i] == ':')
+			{
+				stream[i-1] = '\0';
+				sm0++;
+			}
+			else
+			{
+				sm0 =0;
+			}
+		}
+		else if (sm0 == 4)
+		{
+			if (stream[i] == '\"')
+			{
+				ivalue = i+1;
+				sm0 = 5;//string
+			}
+			else if (charIsNumber(stream[i]))
+			{
+				ivalue = i+1;
+				sm0 = 6; //number
+			}
+			else if (stream[i] == '[')
+			{
+				ivalue = i;
+				sm0 = 7;
+			}
+			else
+			{
+				sm0 = 0x00;
+			}
+		}
+		//string----------------------------
+		else if (sm0 == 5)
+		{
+			if (sm1 == 0)
+			{
+				if (stream[i] == '\"')
+				{
+					sm1++;
+				}
+			}
+			else if (sm1 == 1)
+			{
+				if ((stream[i] == ',') || (stream[i] == '}'))
+				{
+                    stream[i-1] = '\0';
+                    //
+                    json->name = &stream[iname];
+                    json->strval = &stream[ivalue];
+                    sm1 = 0;
+                    sm0 = 0;
+                    //
+                    break;
+
+				}
+			}
+		}
+		//number----------------------------
+		else if (sm0 == 6)
+		{
+
+		}
+		//vector----------------------------
+		else if (sm0 == 7)
+		{
+
+		}
+
+		//while end
+		if (++i >= streamSize)
+		{
+			i = 0x00;
+			sm0 = 0x0;
+			sm1 = 0x0;
+			cod_ret = 1;
+			break;
+		}
+	}
+	return cod_ret;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void httpTrsx_man1(void)
 {
 	static int8_t sm0;
 	int8_t cod_ret=0;
+	
+	JSON json;
+	#define STREAMSIZE 64
+	char stream[STREAMSIZE];
+	int8_t cod=0;
+	
 	if (sm0 == 0)
 	{
-		if (httpTrsx_job(&trsx[0], jsonw, 1, (void*)NULL) == 1)
+		if (httpTrsx_job(&trsx[0], jsonw, 1, (void*)NULL, 0) == 1)
 		{
 			sm0++;
 		}
 	}
 	else if (sm0 == 1)
 	{
-		cod_ret = httpTrsx_job(&trsx[1], jsonr, 1, (void*)NULL);
-		if (cod_ret>0)
+		cod_ret = httpTrsx_job(&trsx[1], jsonr, 1, stream, sizeof(stream));
+		if (cod_ret > 0)
 		{
 			//test en todos los casos
+			//++++++++++++++++++++++++++
+			do
+			{
+				json.name = (void*)NULL;
+				cod = jsonDecode(stream, sizeof(stream), &json);
+				if (json.name != NULL)
+				{
+					//printf("name is: %s\n", json.name);
+					//printf("value is: %s\n", json.strval);
+					Serial.println("\n Json decoded:");
+					Serial.println(json.name);
+					Serial.println(json.strval);
+					Serial.println();
+				}
+			}while (cod == 0);
+			//++++++++++++++++++++++++++
 			
 			if (cod_ret == 1)//finish transmision
 			{
