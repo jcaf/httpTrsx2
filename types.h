@@ -7,6 +7,7 @@ typedef void (*PTRFX_retVOID)(void);
 typedef void (*PTRFX_retVOID_arg1_UINT8_T)(uint8_t);
 typedef void (*PTRFX_retVOID_arg1_INT8_T)(int8_t);
 typedef void (*PTRFX_retVOID_arg1_PCHAR)(char *);
+typedef void (*PTRFX_retVOID_arg1_CHAR)(char);
 typedef void (*PTRFX_retVOID_arg1_PCHAR_arg2_INT8_T)(char *, int8_t);
 typedef unsigned char BOOL;
 

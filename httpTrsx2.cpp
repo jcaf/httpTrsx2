@@ -1,52 +1,92 @@
-
 #if defined(__AVR__) && defined(__GNUC__)
     #include <Arduino.h>
     #include <Ethernet.h>
 
     #define __millis() millis()
-#elif
+#else
 #endif
 
-#include "httpTrsx2.h"
 #include <string.h>
 #include <stdint.h>
-extern EthernetClient client;
-/******************************************************************************************/
-#ifdef HTTPTRSX_DEBUG
-static HTTPTRSXDEBUG httpTrsxDebug;    
-#endif
-/******************************************************************************************/
+#include "httpTrsx2.h"
+
 #if defined(__AVR__) && defined(__GNUC__)
     void httpTrsx_setClient(TRSX *trsx, Client* client)
     {
         trsx->client = client;
     }
-#elif
+#else
 #endif
 
 #ifdef HTTPTRSX_DEBUG
-void httpTrsx_UARTdebug_enabled(TRSX *trsx, BOOLEAN_T _bool)
-{
-    trsx->dbg.bf.enabled = _bool.k;
-    //httpTrsxDebug.dbg.UART_print = UART_print;
-}
-void httpTrsx_UARTdebug_print(TRSX *trsx, char *str, int8_t mode)
-{
-    if (trsx->dbg.bf.enabled)
-        {httpTrsxDebug.UART_print(str, mode);}
-}
-#if defined(__AVR__) && defined(__GNUC__)
-void httpTrsx_UARTdebug_setPrintFx(PTRFX_retVOID_arg1_PCHAR_arg2_INT8_T UART_print)
-{
-    httpTrsxDebug.UART_print = UART_print;
-}
-#elif
-void httpTrsx_UARTdebug_setPrintFx(PTRFX_retVOID_arg1_PCHAR UART_print)
-{
-    httpTrsxDebug.UART_print = UART_print;
-}
+
+    static HTTPTRSXDEBUG httpTrsxDebug;
+
+	#if defined(__AVR__) && defined(__GNUC__)
+		void httpTrsx_UARTdebug_setPrintFx(PTRFX_retVOID_arg1_PCHAR_arg2_INT8_T UART_print)
+		{
+			httpTrsxDebug.UART_print = UART_print;
+		}
+	#else
+		void httpTrsx_UARTdebug_setPrintFx(PTRFX_retVOID_arg1_PCHAR UART_print)
+		{
+			httpTrsxDebug.UART_print = UART_print;
+		}
+	#endif
+
+	void httpTrsx_UARTdebug_setPrintCharFx(PTRFX_retVOID_arg1_CHAR fx)
+	{
+		httpTrsxDebug.UART_printChar = fx;
+	}
+	//
+	void httpTrsx_UARTdebug_enabled(TRSX *trsx, BOOLEAN_T _bool)
+	{
+	    trsx->dbg.bf.enabled = _bool.k;
+	    //httpTrsxDebug.dbg.UART_print = UART_print;
+	}
+	void httpTrsx_UARTdebug_print(TRSX *trsx, char *str, int8_t mode)
+	{
+	    if (trsx->dbg.bf.enabled)
+	        {httpTrsxDebug.UART_print(str, mode);}
+	}
+
+	void httpTrsx_UARTdebug_printChar(TRSX *trsx, char c)
+	{
+	    if (trsx->dbg.bf.enabled)
+	        {httpTrsxDebug.UART_printChar(c);}
+	}
+
 #endif
-#endif
+/******************************************************************************************/
+/*Print standard (RAM)*/
+void http_print(TRSX *trsx, const char *s)
+{
+    #if defined(__AVR__) && defined(__GNUC__)
+        trsx->client->print(s);
+
+        #ifdef HTTPTRSX_DEBUG
+            httpTrsx_UARTdebug_print(trsx, s, 0);
+        #endif
+    #else
+
+    #endif
+}
+/******************************************************************************************/
+void http_printk(TRSX *trsx, char *s)
+{
+    #ifdef FS_STRING
+
+		trsx->client->print(reinterpret_cast <const __FlashStringHelper *> (s) );
+
+		#ifdef HTTPTRSX_DEBUG
+            httpTrsx_UARTdebug_print(trsx, s, 1);
+        #endif
+    #else
+		http_print(trsx, s);
+    #endif
+}
+/******************************************************************************************/
+
 /* 1 = configured
  * 0 = not configured */
 //int8_t NIC_begin(uint8_t *MAC, ENABLED_T DHCPenabled , uint8_t *IPstatic)
@@ -86,73 +126,37 @@ void NIC_getMyIP(char *str, uint16_t sizebuff)
 {
     #if defined(__AVR__) && defined(__GNUC__)
     snprintf(str, sizebuff, "%d.%d.%d.%d", Ethernet.localIP()[0], Ethernet.localIP()[1], Ethernet.localIP()[2], Ethernet.localIP()[3]);
-    #elif
+    #else
     #endif
 }
 /******************************************************************************************/
-#if defined(__AVR__) && defined(__GNUC__)
-    #define FS_STRING
-    #ifdef FS_STRING
-      #define FS(s) PSTR(s)
-    #else
-      #define FS(s) s
-    #endif
-#else
-  #define FS(s) s
-  //#define Serial.print(s) do{printf("%s", s);}while(0)
-#endif
 /******************************************************************************************/
 int16_t tcpClient_getBytesAvailable(TRSX *trsx)
 {
     #if defined(__AVR__) && defined(__GNUC__)
-    
-    return trsx->client->available();
-    #elif
+    	return trsx->client->available();
+    #else
     #endif
 }
 int8_t tcpClient_connected(TRSX *trsx)
 {
     #if defined(__AVR__) && defined(__GNUC__)
-    return trsx->client->connected();
-    #elif
+    	return trsx->client->connected();
+    #else
     #endif
 }
 void tcpClient_stop(TRSX *trsx)
 {
     #if defined(__AVR__) && defined(__GNUC__)
-    trsx->client->stop();
-    #elif
+    	trsx->client->stop();
+    #else
     #endif
 }
 char httpClient_readChar(TRSX *trsx) 
 {
     #if defined(__AVR__) && defined(__GNUC__)
-    return trsx->client->read();
-    #elif
-    #endif
-}
-/******************************************************************************************/
-/*Print standard (RAM)*/
-void http_print(TRSX *trsx, const char *s)
-{
-    #if defined(__AVR__) && defined(__GNUC__)
-        trsx->client->print(s);
-        #ifdef HTTPTRSX_DEBUG
-            httpTrsx_UARTdebug_print(trsx, s, 0);
-        #endif  
-    #elif
-    #endif
-}
-/******************************************************************************************/
-void http_printk(TRSX *trsx, char *s)
-{
-    #ifdef FS_STRING
-        trsx->client->print(reinterpret_cast <const __FlashStringHelper *> (s) );
-        #ifdef HTTPTRSX_DEBUG
-            httpTrsx_UARTdebug_print(trsx, s, 1);
-        #endif
+    	return trsx->client->read();
     #else
-      http_print(trsx, s);
     #endif
 }
 /******************************************************************************************/
@@ -220,10 +224,16 @@ int8_t httpTrsx_requestMsg(TRSX *trsx, JSON *json, uint8_t npairs)//send the req
     //http_printk(trsx, FS("Connection: keep-alive\r\n"));//HTTP persistent connection
     http_printk(trsx, FS("Connection: close\r\n"));   
     http_printk(trsx, FS("Content-Type: application/json\r\n"));
-    http_printk(trsx, FS("api_key: "));http_print(trsx, trsx->ApiKey);http_printk(trsx, FS("\r\n"));
     http_printk(trsx, FS("User-Agent: Agent/1.00\r\n"));
+
+    if (trsx->ApiKey != NULL)
+    {
+    	http_printk(trsx, FS("api_key: "));http_print(trsx, trsx->ApiKey);http_printk(trsx, FS("\r\n"));
+    }
+
     if (trsx->HdrLine != NULL)
-        {http_print(trsx, trsx->HdrLine);}
+        {http_print(trsx, trsx->HdrLine);http_printk(trsx, FS("\r\n"));}
+
     http_printk(trsx, FS("Content-Length: "));
     uint32toa(json_getContentLength(json, npairs) ,  buff, sizeof(buff)/sizeof(buff[0]));
     http_print(trsx, buff);http_printk(trsx, FS("\r\n"));
@@ -237,7 +247,7 @@ int8_t httpTrsx_requestMsg(TRSX *trsx, JSON *json, uint8_t npairs)//send the req
     return cod_ret;
 }
 /******************************************************************************************
-        HTTP transaction: response message
+HTTP transaction: response message
 
 I’ve had a TCPClient disconnect but still have the connected property == true. 
 So it seams the only way to tell is if a Read from the network stream returns 0 bytes. 
@@ -298,7 +308,6 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg, uint16_t outmsgSize)
         trsx->respMsg.sm0++;
 
         //++--
-        //client.find("\r\n\r\n");
 		while (1)//(tcpClient_getBytesAvailable(trsx) > 0)
 		{
 			if (sk == 0)
@@ -331,7 +340,6 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg, uint16_t outmsgSize)
 			}
 		}
 		//--+
-
     }
     if (trsx->respMsg.sm0 == 1)
     {
@@ -342,8 +350,9 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg, uint16_t outmsgSize)
             if (tcpClient_getBytesAvailable(trsx) > 0)//buffer>0
             {
                 c = httpClient_readChar(trsx);
-                //httpTrsx_UARTdebug_print(trsx, c);
-                Serial.write(c);
+				#ifdef HTTPTRSX_DEBUG
+                	httpTrsx_UARTdebug_printChar(trsx, c);
+				#endif
                     
                 if (outmsg!= NULL)
                 {
@@ -353,7 +362,6 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg, uint16_t outmsgSize)
                     //
                     cod_ret = 2;
                 }
-                //if (c == 'LAST_CHAR_BREAKING')break;
             }
             else
             {
@@ -406,7 +414,7 @@ connection information between transactions).
     1: End one HTTP transaction, even if client could not connect to the server.
 */
 
-//#define SOCKET_DEBUG
+
 #ifdef SOCKET_DEBUG
 #include "utility/w5100.h"
 #include "utility/socket.h"
@@ -428,13 +436,14 @@ int8_t tcpClient_connection(TRSX *trsx)
     int8_t cod_ret;
     
     #if defined(__AVR__) && defined(__GNUC__)
-    if (trsx->domain != NULL)
-        cod_ret = trsx->client->connect(trsx->domain, trsx->port);
-    else
-        cod_ret = trsx->client->connect(trsx->IP, trsx->port);
-    #elif
-    #endif
-    return cod_ret;
+		if (trsx->domain != NULL)
+			cod_ret = trsx->client->connect(trsx->domain, trsx->port);
+		else
+			cod_ret = trsx->client->connect(trsx->IP, trsx->port);
+	#else
+	#endif
+
+	return cod_ret;
 }
 
 //1=finish
@@ -446,14 +455,15 @@ int8_t httpTrsx_do1trsx(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg, ui
 
     if (sm0 == 0)// client opens a connection
     {
-        //httpTrsxDebug.UART_print(FS("\nNueva transaction\n"), 1);
-        
         if (tcpClient_connection(trsx))
         {
             sm0++;
         }
         else
         {
+        	//httpTrsxDebug.UART_print("ERROR: Conexion ", 1);
+        	Serial.println(PSTR("ERROR: Conexion"));
+        	//
             #ifdef SOCKET_DEBUG
             Serial.println(F("Socket status in error before client.stop():"));
             ShowSocketStatus();
@@ -602,7 +612,6 @@ int8_t httpTrsx_job(TRSX *trsx, JSON *json, uint8_t npairs, char *outmsg, uint16
     }
     return cod_ret;
 }
-
 
 
 //////////////////////////////////////////////////////////////////////////////////
