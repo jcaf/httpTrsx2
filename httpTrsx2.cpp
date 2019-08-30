@@ -280,7 +280,7 @@ KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT: Is the global k-timeout assigned for all rece
 //{
 //}ktimeOut;
 #define KTIMEOUT_READBUFFER                             10UL//ms
-#define KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER    0UL//ms
+#define KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER    5UL//ms
 #define KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT               6000UL//ms
 
 #if KTIMEOUT_AFTERSERVERDISCONNECTED_FLUSHBUFFER > KTIMEOUT_RESPONSEMSG_TOTALTIMEOUT
@@ -308,7 +308,8 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg, uint16_t outmsgSize)
         trsx->respMsg.sm0++;
 
         //++--
-		while (1)//(tcpClient_getBytesAvailable(trsx) > 0)
+
+        while (1)//(tcpClient_getBytesAvailable(trsx) > 0)
 		{
 			if (sk == 0)
 			{
@@ -339,6 +340,7 @@ int8_t httpTrsx_responseMsg(TRSX *trsx, char *outmsg, uint16_t outmsgSize)
 					sk = 0;
 			}
 		}
+
 		//--+
     }
     if (trsx->respMsg.sm0 == 1)
